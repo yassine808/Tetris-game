@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Math/Box2D.h"
 #include "GameFramework/GameModeBase.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/Pawn.h"
@@ -11,6 +12,7 @@ class ATetrisBoard3D;
 class USpringArmComponent;
 class UCameraComponent;
 class USoundBase;
+class UAudioComponent;
 
 namespace TetrisBoard
 {
@@ -18,6 +20,23 @@ namespace TetrisBoard
 	constexpr int32 Height = 20;
 	constexpr int32 PieceCount = 7;
 }
+
+/** High level screen the player is currently on. */
+UENUM(BlueprintType)
+enum class ETetrisScreen : uint8
+{
+	Menu,
+	Playing,
+	GameOver
+};
+
+/** Which set of keys drives horizontal movement + rotation. */
+UENUM(BlueprintType)
+enum class EControlScheme : uint8
+{
+	Arrows UMETA(DisplayName = "Arrow Keys"),
+	WASD   UMETA(DisplayName = "A / D / W")
+};
 
 UCLASS()
 class ATetrisGameMode : public AGameModeBase
@@ -77,11 +96,29 @@ public:
 	int32 GetScore() const { return Score; }
 	int32 GetLines() const { return Lines; }
 	bool IsGameOver() const { return bGameOver; }
+	/** True only while a piece is actually live on the board (not menu / not paused). */
+	bool IsPlayActive() const { return Screen == ETetrisScreen::Playing && !bPaused && !bGameOver; }
 	int32 GetNextType() const { return NextType; }
 	int32 GetActiveType() const { return CurType; }
 	int32 GetActiveRot() const { return CurRot; }
 	int32 GetActiveX() const { return CurX; }
 	int32 GetActiveY() const { return CurY; }
+
+	// --- screen / settings (read by the HUD) ---
+	ETetrisScreen GetScreen() const { return Screen; }
+	EControlScheme GetControlScheme() const { return ControlScheme; }
+	bool IsMusicEnabled() const { return bMusicEnabled; }
+	bool IsMusicPlaying() const;
+	int32 GetMenuIndex() const { return MenuIndex; }
+	float GetLastScorePct() const { return LastScorePct; }
+
+	/** Menu hit-rects published by the HUD each frame so hover can drive selection. */
+	void SetMenuRects(const TArray<FBox2D>& InRects) { MenuRects = InRects; }
+	void PollMenuMouse();
+
+	// HUD-facing menu accessors.
+	int32 GetMenuCountForDraw() const { return ActiveMenuCount(); }
+	FString GetMenuLabelForDraw(int32 Index) const { return MenuLabel(Index); }
 
 	static void GetPieceCells(int32 Type, int32 Rot, TArray<FIntPoint>& OutCells);
 	static FLinearColor GetPieceColor(int32 Type);
@@ -90,12 +127,37 @@ public:
 	void ResetGame();
 
 private:
+	// --- gameplay input ---
 	void MoveLeft();
 	void MoveRight();
 	void RotatePiece();
 	void SoftDrop();
 	void HardDrop();
 	void RestartGame();
+	void TogglePause();
+
+	// --- menu input ---
+	void MenuUp();
+	void MenuDown();
+	void MenuConfirm();
+	void MenuBack();
+	int32 ActiveMenuCount() const;
+	FString MenuLabel(int32 Index) const;
+	bool IsInMenu() const { return Screen == ETetrisScreen::Menu || Screen == ETetrisScreen::GameOver; }
+
+	void BindGameplayInput();
+	void ClearGameInput();
+
+	void StartGame();
+	void ReturnToMenu();
+	void CycleControlScheme();
+	void ToggleMusic();
+	void QuitGame();
+
+	void LoadSettings();
+	void SaveSettings() const;
+	void ApplyMusic();
+	void ApplyScreenInputMode();
 
 	void SpawnPiece();
 	bool IsValidPosition(int32 Type, int32 Rot, int32 X, int32 Y) const;
@@ -130,6 +192,12 @@ private:
 	UPROPERTY()
 	TObjectPtr<USoundBase> SfxGameOver;
 
+	UPROPERTY()
+	TObjectPtr<USoundBase> MusicTrack;
+
+	UPROPERTY()
+	TObjectPtr<UAudioComponent> MusicComp;
+
 	bool bDropSfxPending = false;
 
 	TArray<int32> Grid;
@@ -143,6 +211,16 @@ private:
 	int32 Lines = 0;
 	float FallTimer = 0.f;
 	float FallInterval = 0.8f;
+
+	// --- screen state ---
+	ETetrisScreen Screen = ETetrisScreen::Menu;
+	EControlScheme ControlScheme = EControlScheme::Arrows;
+	bool bMusicEnabled = true;
+	int32 MenuIndex = 0;
+	int32 MenuCount = 4;
+	bool bPaused = false;
+	float LastScorePct = 0.f;
+	TArray<FBox2D> MenuRects;
 };
 
 UCLASS()
@@ -152,4 +230,11 @@ class ATetrisHUD : public AHUD
 
 public:
 	virtual void DrawHUD() override;
+
+private:
+	void DrawGameOverlay(class ATetrisPlayerController* PC);
+	void DrawMenu(class ATetrisPlayerController* PC);
+	void DrawGameOver(class ATetrisPlayerController* PC);
+	void DrawPaused(class ATetrisPlayerController* PC);
+	void DrawBar(float X, float Y, float W, float H, float Pct, const FLinearColor& Fill);
 };

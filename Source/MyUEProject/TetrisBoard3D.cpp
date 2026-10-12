@@ -245,7 +245,7 @@ void ATetrisBoard3D::Tick(float DeltaSeconds)
 	}
 
 	// --- active piece (lerped) + ghost ----------------------------------
-	if (!PC->IsGameOver())
+	if (PC->IsPlayActive())
 	{
 		const int32 Type = PC->GetActiveType();
 		TArray<FIntPoint> Cells;
