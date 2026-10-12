@@ -217,7 +217,9 @@ void ATetrisPlayerController::PlaySfx(USoundBase* Sound)
 
 void ATetrisPlayerController::ApplyScreenInputMode()
 {
-	const bool bMenuish = IsInMenu();
+	// Menus, the game-over overlay and the pause overlay all want a visible
+	// cursor and only capture the mouse on a real click, so aim works for them.
+	const bool bMenuish = HasClickableMenu();
 
 	if (UGameViewportClient* VP = GetWorld() ? GetWorld()->GetGameViewport() : nullptr)
 	{
@@ -373,9 +375,42 @@ void ATetrisPlayerController::MenuConfirm()
 	}
 }
 
+void ATetrisPlayerController::MenuClickConfirm()
+{
+	if (!HasClickableMenu())
+	{
+		return;
+	}
+
+	// Only a click that actually lands on an item may confirm. The HUD republishes
+	// MenuRects every frame, so hover has already updated MenuIndex for us -- but a
+	// click over empty space must not fire the highlighted item.
+	float MX = 0.f, MY = 0.f;
+	if (!GetMousePosition(MX, MY))
+	{
+		return;
+	}
+
+	const FVector2D Mouse(MX, MY);
+	bool bOverItem = false;
+	for (const FBox2D& Rect : MenuRects)
+	{
+		if (Rect.IsInside(Mouse))
+		{
+			bOverItem = true;
+			break;
+		}
+	}
+
+	if (bOverItem)
+	{
+		MenuConfirm();
+	}
+}
+
 void ATetrisPlayerController::PollMenuMouse()
 {
-	if (!IsInMenu())
+	if (!HasClickableMenu())
 	{
 		return;
 	}
@@ -742,14 +777,16 @@ void ATetrisPlayerController::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
-	if (IsInMenu())
+	if (HasClickableMenu())
 	{
+		// Main menu, game-over menu and the pause overlay all accept hover.
 		PollMenuMouse();
-		return;
 	}
 
 	if (!IsPlayActive())
 	{
+		// Covers every menu screen and the paused state -- the fall timer
+		// must not advance while an overlay owns the input.
 		return;
 	}
 
@@ -787,7 +824,7 @@ void ATetrisPlayerController::BindGameplayInput()
 	InputComponent->BindAction("MenuBack", IE_Pressed, this, &ATetrisPlayerController::MenuBack);
 	InputComponent->BindAction("Pause", IE_Pressed, this, &ATetrisPlayerController::TogglePause);
 	InputComponent->BindAction("Restart", IE_Pressed, this, &ATetrisPlayerController::RestartGame);
-	InputComponent->BindAction("MenuClick", IE_Pressed, this, &ATetrisPlayerController::MenuConfirm);
+	InputComponent->BindAction("MenuClick", IE_Pressed, this, &ATetrisPlayerController::MenuClickConfirm);
 
 	// --- scheme A: arrow keys ---
 	InputComponent->BindAction("ArrowsLeft", IE_Repeat, this, &ATetrisPlayerController::MoveLeft);
@@ -900,17 +937,39 @@ void ATetrisHUD::DrawMenu(ATetrisPlayerController* PC)
 	DrawRect(FLinearColor(0.02f, 0.03f, 0.07f, 0.90f), 0.f, 0.f, ScreenW, ScreenH);
 
 	const float CX = ScreenW * 0.5f;
-	DrawText(TEXT("TETRIS"), FLinearColor::White, CX - 150.f, ScreenH * 0.10f, BigFont, 3.2f);
-	DrawText(TEXT("3D BLOCK PUZZLE"), FLinearColor(0.5f, 0.85f, 1.f, 1.f),
-		CX - 118.f, ScreenH * 0.10f + 92.f, BigFont, 0.9f);
 
-	const int32 Count = PC->GetMenuCountForDraw();
-	TArray<FBox2D> Rects;
+	// Only the main menu owns the title block. On game over the banner comes from
+	// DrawGameOver(); drawing both left "TETRIS" bleeding through the red band.
+	if (PC->GetScreen() == ETetrisScreen::Menu)
+	{
+		DrawText(TEXT("TETRIS"), FLinearColor::White, CX - 150.f, ScreenH * 0.10f, BigFont, 3.2f);
+		DrawText(TEXT("3D BLOCK PUZZLE"), FLinearColor(0.5f, 0.85f, 1.f, 1.f),
+			CX - 118.f, ScreenH * 0.10f + 92.f, BigFont, 0.9f);
+	}
 
+	DrawMenuList(PC, ScreenH * 0.42f);
+
+	DrawText(TEXT("W/S or Up/Down to select    Enter / Click to confirm    Esc to go back"),
+		FLinearColor(0.6f, 0.65f, 0.78f, 1.f), CX - 300.f, ScreenH - 64.f,
+		SmallFont ? SmallFont : BigFont, 1.f);
+}
+
+void ATetrisHUD::DrawMenuList(ATetrisPlayerController* PC, float TopY)
+{
+	const float ScreenW = (float)Canvas->SizeX;
+	UFont* BigFont = GEngine ? GEngine->GetLargeFont() : nullptr;
+	if (!BigFont)
+	{
+		return;
+	}
+
+	const float CX = ScreenW * 0.5f;
 	const float ItemH = 52.f;
 	const float ItemW = 460.f;
-	const float TopY = ScreenH * 0.42f;
+
+	const int32 Count = PC->GetMenuCountForDraw();
 	const int32 Sel = PC->GetMenuIndex();
+	TArray<FBox2D> Rects;
 
 	for (int32 i = 0; i < Count; i++)
 	{
@@ -927,21 +986,16 @@ void ATetrisHUD::DrawMenu(ATetrisPlayerController* PC)
 			DrawRect(FLinearColor(1.f, 1.f, 1.f, 0.95f), CX - ItemW * 0.5f, Y, 6.f, ItemH);
 		}
 
-		UFont* F = BigFont;
 		const float Scale = bSel ? 1.15f : 1.0f;
 		// rough centre: text scale 1.0 is ~14px tall for the large font
 		DrawText(Label, bSel ? FLinearColor::White : FLinearColor(0.78f, 0.82f, 0.9f, 1.f),
-			CX - ItemW * 0.5f + 34.f, Y + 12.f, F, Scale);
+			CX - ItemW * 0.5f + 34.f, Y + 12.f, BigFont, Scale);
 
 		Rects.Add(FBox2D(FVector2D(CX - ItemW * 0.5f, Y),
 			FVector2D(CX + ItemW * 0.5f, Y + ItemH)));
 	}
 
 	PC->SetMenuRects(Rects);
-
-	DrawText(TEXT("W/S or Up/Down to select    Enter / Click to confirm    Esc to go back"),
-		FLinearColor(0.6f, 0.65f, 0.78f, 1.f), CX - 300.f, ScreenH - 64.f,
-		SmallFont ? SmallFont : BigFont, 1.f);
 }
 
 void ATetrisHUD::DrawGameOver(ATetrisPlayerController* PC)
@@ -962,6 +1016,24 @@ void ATetrisHUD::DrawGameOver(ATetrisPlayerController* PC)
 
 void ATetrisHUD::DrawPaused(ATetrisPlayerController* PC)
 {
-	DrawText(TEXT("PAUSED"), FLinearColor::White, 40.f, 210.f,
-		GEngine ? GEngine->GetLargeFont() : nullptr, 2.f);
+	const float ScreenW = (float)Canvas->SizeX;
+	const float ScreenH = (float)Canvas->SizeY;
+	UFont* BigFont = GEngine ? GEngine->GetLargeFont() : nullptr;
+	UFont* SmallFont = GEngine ? GEngine->GetSmallFont() : nullptr;
+	if (!BigFont)
+	{
+		return;
+	}
+
+	// Dim the frozen board behind the overlay, same treatment as the main menu.
+	DrawRect(FLinearColor(0.02f, 0.03f, 0.07f, 0.85f), 0.f, 0.f, ScreenW, ScreenH);
+
+	const float CX = ScreenW * 0.5f;
+	DrawText(TEXT("PAUSED"), FLinearColor::White, CX - 110.f, ScreenH * 0.24f, BigFont, 2.4f);
+
+	DrawMenuList(PC, ScreenH * 0.44f);
+
+	DrawText(TEXT("W/S or Up/Down to select    Enter / Click to confirm    P to resume"),
+		FLinearColor(0.6f, 0.65f, 0.78f, 1.f), CX - 300.f, ScreenH - 64.f,
+		SmallFont ? SmallFont : BigFont, 1.f);
 }

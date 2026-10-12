@@ -8,6 +8,12 @@ Intermediate/
 Plugins/*/Binaries/
 Plugins/*/Intermediate/
 
+# --- Packaged game output (hundreds of MB; published via Releases, not git) ---
+Packaged/
+Releases/
+*.zip
+*.zip.part*
+
 # --- Per-machine / per-session state (contains secrets) ---
 Saved/
 *.sln

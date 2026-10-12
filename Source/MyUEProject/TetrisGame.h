@@ -140,10 +140,17 @@ private:
 	void MenuUp();
 	void MenuDown();
 	void MenuConfirm();
+	// Mouse click: like MenuConfirm, but only fires when the cursor is actually
+	// over a menu item. Without this check any stray left-click on empty canvas
+	// would activate whatever happened to be selected (e.g. QUIT).
+	void MenuClickConfirm();
 	void MenuBack();
 	int32 ActiveMenuCount() const;
 	FString MenuLabel(int32 Index) const;
 	bool IsInMenu() const { return Screen == ETetrisScreen::Menu || Screen == ETetrisScreen::GameOver; }
+	// True whenever a mouse-driven menu is on screen: the main menu, the
+	// game-over menu, or the pause overlay (which is only up while Playing).
+	bool HasClickableMenu() const { return ActiveMenuCount() > 0; }
 
 	void BindGameplayInput();
 	void ClearGameInput();
@@ -236,5 +243,9 @@ private:
 	void DrawMenu(class ATetrisPlayerController* PC);
 	void DrawGameOver(class ATetrisPlayerController* PC);
 	void DrawPaused(class ATetrisPlayerController* PC);
+	// Shared selectable-item list. Draws Count rows starting at TopY and publishes
+	// their screen-space hit boxes back to the controller, which is what lets the
+	// mouse confirm work on the main menu, the game-over menu and the pause overlay.
+	void DrawMenuList(class ATetrisPlayerController* PC, float TopY);
 	void DrawBar(float X, float Y, float W, float H, float Pct, const FLinearColor& Fill);
 };
