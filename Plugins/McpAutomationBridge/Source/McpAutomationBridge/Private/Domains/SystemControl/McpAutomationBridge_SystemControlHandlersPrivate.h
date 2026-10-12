@@ -1,0 +1,61 @@
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Templates/SharedPointer.h"
+
+class FJsonObject;
+class FMcpBridgeWebSocket;
+class UMcpAutomationBridgeSubsystem;
+
+namespace McpSystemControlHandlers {
+
+using FSystemControlSocket = TSharedPtr<FMcpBridgeWebSocket>;
+
+bool HandleValidateAssets(UMcpAutomationBridgeSubsystem* Self,
+                          const FString& RequestId,
+                          const TSharedPtr<FJsonObject>& Payload,
+                          FSystemControlSocket RequestingSocket);
+bool HandleRunUbt(UMcpAutomationBridgeSubsystem* Self,
+                  const FString& RequestId,
+                  const TSharedPtr<FJsonObject>& Payload,
+                  FSystemControlSocket RequestingSocket);
+bool HandleRunTests(UMcpAutomationBridgeSubsystem* Self,
+                    const FString& RequestId,
+                    const TSharedPtr<FJsonObject>& Payload,
+                    FSystemControlSocket RequestingSocket);
+bool HandlePackageProject(UMcpAutomationBridgeSubsystem* Self,
+                          const FString& RequestId,
+                          const TSharedPtr<FJsonObject>& Payload,
+                          FSystemControlSocket RequestingSocket);
+bool HandlePackageStatus(UMcpAutomationBridgeSubsystem* Self,
+                         const FString& RequestId,
+                         const TSharedPtr<FJsonObject>& Payload,
+                         FSystemControlSocket RequestingSocket);
+bool HandleLaunchBuild(UMcpAutomationBridgeSubsystem* Self,
+                       const FString& RequestId,
+                       const TSharedPtr<FJsonObject>& Payload,
+                       FSystemControlSocket RequestingSocket);
+// Adds a launch_build job's game-log evidence to a package_status reply.
+void AppendLaunchStatus(const FString& GameLogPath, int32 ExitCode, bool bExitedEarly,
+                        const TSharedPtr<FJsonObject>& Result);
+bool HandleExecutePython(UMcpAutomationBridgeSubsystem* Self,
+                         const FString& RequestId,
+                         const TSharedPtr<FJsonObject>& Payload,
+                         FSystemControlSocket RequestingSocket);
+// list_output_files / delete_output_file: the files the MCP itself writes
+// (screenshots, snapshots), and nothing outside those folders.
+bool HandleListOutputFiles(UMcpAutomationBridgeSubsystem* Self,
+                           const FString& RequestId,
+                           const TSharedPtr<FJsonObject>& Payload,
+                           FSystemControlSocket RequestingSocket);
+bool HandleDeleteOutputFile(UMcpAutomationBridgeSubsystem* Self,
+                            const FString& RequestId,
+                            const TSharedPtr<FJsonObject>& Payload,
+                            FSystemControlSocket RequestingSocket);
+bool HandleManagePlugins(UMcpAutomationBridgeSubsystem* Self,
+                         const FString& RequestId,
+                         const FString& SubAction,
+                         const TSharedPtr<FJsonObject>& Payload,
+                         FSystemControlSocket RequestingSocket);
+
+}

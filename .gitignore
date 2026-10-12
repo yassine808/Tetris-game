@@ -1,0 +1,44 @@
+# Unreal Engine 5 — MyUEProject
+# Standard UE ignore set, trimmed for this project.
+
+# --- Build artifacts (rebuild locally; never commit) ---
+Binaries/
+DerivedDataCache/
+Intermediate/
+Plugins/*/Binaries/
+Plugins/*/Intermediate/
+
+# --- Per-machine / per-session state (contains secrets) ---
+Saved/
+*.sln
+*.suo
+*.xcodeproj
+*.xcworkspace
+.vs/
+.vscode/
+.idea/
+*.code-workspace
+
+# --- Compiled / cached assets ---
+*.apk
+*.aab
+*.unitypackage
+*.app
+
+# --- Crash reports and logs ---
+*.log
+*.dmp
+
+# --- OS noise ---
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# --- Large third-party binaries ---
+*.pdb
+*.exp
+*.lib
+*.obj
+
+# --- Local MCP server state ---
+capability-token
