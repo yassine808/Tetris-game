@@ -826,16 +826,27 @@ void ATetrisPlayerController::BindGameplayInput()
 	InputComponent->BindAction("Restart", IE_Pressed, this, &ATetrisPlayerController::RestartGame);
 	InputComponent->BindAction("MenuClick", IE_Pressed, this, &ATetrisPlayerController::MenuClickConfirm);
 
+	// Movement/soft-drop are bound to BOTH IE_Pressed and IE_Repeat.
+	// A tap only ever dispatches IE_Pressed, so binding IE_Repeat alone made a
+	// quick press of A/D/Left/Right do nothing at all; IE_Repeat keeps the key
+	// auto-repeat working while it is held.
+	//
 	// --- scheme A: arrow keys ---
+	InputComponent->BindAction("ArrowsLeft", IE_Pressed, this, &ATetrisPlayerController::MoveLeft);
 	InputComponent->BindAction("ArrowsLeft", IE_Repeat, this, &ATetrisPlayerController::MoveLeft);
+	InputComponent->BindAction("ArrowsRight", IE_Pressed, this, &ATetrisPlayerController::MoveRight);
 	InputComponent->BindAction("ArrowsRight", IE_Repeat, this, &ATetrisPlayerController::MoveRight);
 	InputComponent->BindAction("ArrowsRotate", IE_Pressed, this, &ATetrisPlayerController::RotatePiece);
+	InputComponent->BindAction("ArrowsSoftDrop", IE_Pressed, this, &ATetrisPlayerController::SoftDrop);
 	InputComponent->BindAction("ArrowsSoftDrop", IE_Repeat, this, &ATetrisPlayerController::SoftDrop);
 
 	// --- scheme B: A / D / W / S ---
+	InputComponent->BindAction("WasdLeft", IE_Pressed, this, &ATetrisPlayerController::MoveLeft);
 	InputComponent->BindAction("WasdLeft", IE_Repeat, this, &ATetrisPlayerController::MoveLeft);
+	InputComponent->BindAction("WasdRight", IE_Pressed, this, &ATetrisPlayerController::MoveRight);
 	InputComponent->BindAction("WasdRight", IE_Repeat, this, &ATetrisPlayerController::MoveRight);
 	InputComponent->BindAction("WasdRotate", IE_Pressed, this, &ATetrisPlayerController::RotatePiece);
+	InputComponent->BindAction("WasdSoftDrop", IE_Pressed, this, &ATetrisPlayerController::SoftDrop);
 	InputComponent->BindAction("WasdSoftDrop", IE_Repeat, this, &ATetrisPlayerController::SoftDrop);
 
 	// Shared across both schemes.
