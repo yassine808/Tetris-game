@@ -62,7 +62,7 @@ and gravity steps read as smooth motion rather than snapping.
 ## 🕹️ Playing the game
 
 Grab the latest build from the
-[**Releases**](https://github.com/yassine808/UNREAL-game/releases) page.
+[**Releases**](https://github.com/yassine808/Tetris-game/releases) page.
 
 1. Download and extract the archive.
 2. Run `UNREAL-game.exe`.
